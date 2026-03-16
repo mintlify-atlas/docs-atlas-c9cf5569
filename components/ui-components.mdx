@@ -1,0 +1,246 @@
+---
+title: "UI components"
+description: "Primitive UI components used throughout the E-Dokan storefront."
+---
+
+UI primitives live in `components/ui/`. They are small, single-responsibility components consumed by both feature components and page files.
+
+---
+
+## Button
+
+A styled `<button>` element built with `React.forwardRef`. It accepts every native HTML button attribute via the `ButtonProps` interface and applies a consistent black pill appearance.
+
+```typescript
+// types/types.ts
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
+```
+
+<ParamField path="className" type="string">
+  Additional Tailwind classes merged on top of the default styles via `cn()`.
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode">
+  Button label or inner content.
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  When `true`, the button is non-interactive and rendered at 50% opacity with a `not-allowed` cursor.
+</ParamField>
+
+<ParamField path="type" type="'button' | 'submit' | 'reset'">
+  HTML button type. Defaults to `"button"` to prevent accidental form submissions.
+</ParamField>
+
+**Usage**
+
+```tsx
+import Button from "@/components/ui/Button";
+
+<Button onClick={() => router.push("/cart")} className="flex items-center gap-x-2">
+  Add To Cart <ShoppingCart />
+</Button>
+```
+
+---
+
+## Container
+
+A simple `div` wrapper that centres its children and constrains them to `max-w-7xl`. Used in `Navbar` and any page that needs consistent horizontal padding.
+
+```typescript
+// types/types.ts
+export interface ContainerProps {
+  children: React.ReactNode;
+}
+```
+
+<ParamField path="children" type="React.ReactNode" required>
+  Page or section content to constrain.
+</ParamField>
+
+**Usage**
+
+```tsx
+import Container from "@/components/ui/Container";
+
+<Container>
+  <div className="px-4 sm:px-6 lg:px-8">
+    {/* page content */}
+  </div>
+</Container>
+```
+
+---
+
+## Currency
+
+A client component that formats a `value` as USD currency using the browser's `Intl.NumberFormat` API. Renders `null` on the server (hydration guard) to avoid mismatches.
+
+```typescript
+// types/types.ts
+export interface CurrencyProps {
+  value?: string | number;
+}
+```
+
+<ParamField path="value" type="string | number">
+  The price to format. Accepts both a raw `number` and a numeric `string` (cast internally with `Number(value)`).
+</ParamField>
+
+**Usage**
+
+```tsx
+import Currency from "@/components/ui/Currency";
+
+// Renders: $29.99
+<Currency value={data.price} />
+```
+
+<Note>
+  `Currency` is a `"use client"` component. It mounts a state flag on the client before rendering to prevent server/client HTML mismatches with locale-sensitive number formatting.
+</Note>
+
+---
+
+## IconButton
+
+A small circular white button designed to wrap a single icon element. Scales up on hover via `hover:scale-110`. Accepts an optional `className` for additional styles.
+
+```typescript
+// types/types.ts
+export interface IconButtonProps {
+  onClick?: MouseEventHandler<HTMLButtonElement> | undefined;
+  icon: React.ReactElement;
+  className?: string;
+}
+```
+
+<ParamField path="icon" type="React.ReactElement" required>
+  The icon to render inside the button — typically a Lucide icon component.
+</ParamField>
+
+<ParamField path="onClick" type="MouseEventHandler<HTMLButtonElement>">
+  Click handler. Should call `event.stopPropagation()` when the button is nested inside another clickable element (e.g. `ProductCard`).
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional Tailwind classes merged via `cn()`.
+</ParamField>
+
+**Usage**
+
+```tsx
+import IconButton from "@/components/ui/icon-button";
+import { Expand } from "lucide-react";
+
+<IconButton
+  onClick={onPreview}
+  icon={<Expand size={20} className="text-gray-600" />}
+/>
+```
+
+---
+
+## Modal
+
+A Headless UI `Dialog`-based modal with a semi-transparent black backdrop, smooth scale/opacity enter-leave transitions, and a top-right close `IconButton`.
+
+```typescript
+// types/types.ts
+export interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+```
+
+<ParamField path="open" type="boolean" required>
+  Controls modal visibility. Pass a state value toggled by your open/close handlers.
+</ParamField>
+
+<ParamField path="onClose" type="() => void" required>
+  Callback fired when the backdrop is clicked or the close button is pressed.
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Content rendered inside the modal panel.
+</ParamField>
+
+**Usage**
+
+```tsx
+import Modal from "@/components/ui/Modal";
+
+<Modal open={previewModal.isOpen} onClose={previewModal.onClose}>
+  <div className="grid grid-cols-1 sm:grid-cols-12">
+    {/* Gallery + Info */}
+  </div>
+</Modal>
+```
+
+<Note>
+  `Modal` is a `"use client"` component. It relies on Headless UI's `Transition` and `Dialog` which require browser APIs.
+</Note>
+
+---
+
+## NoResults
+
+A stateless empty-state component that displays a centred "No Result Found!" message. Rendered by `ProductList` when its `items` array is empty.
+
+This component accepts no props.
+
+**Usage**
+
+```tsx
+import NoResults from "@/components/ui/no-results";
+
+{items.length === 0 && <NoResults />}
+```
+
+---
+
+## ProductCard
+
+A clickable product tile that navigates to `/product/[id]` on click. On hover, two `IconButton` actions appear — an expand (quick-view) button and an add-to-cart button — without triggering the card navigation thanks to `event.stopPropagation()`.
+
+The component uses the inline `ProductCard` interface (not exported from `types.ts`) which wraps the shared `Product` type:
+
+```typescript
+// components/ui/product-card.tsx
+interface ProductCard {
+  data: Product;
+}
+
+// Underlying Product type from types/types.ts
+export interface Product {
+  id: string;
+  category: Category;
+  name: string;
+  price: string;
+  isFeatured: boolean;
+  size: Size;
+  color: Color;
+  images: Image[];
+}
+```
+
+<ParamField path="data" type="Product" required>
+  The full product object. The card renders `data.images[0].url` as the cover image, `data.name`, `data.category.name`, and `data.price`.
+</ParamField>
+
+**Usage**
+
+```tsx
+import ProductCard from "@/components/ui/product-card";
+
+{items.map((item) => (
+  <ProductCard key={item.id} data={item} />
+))}
+```
+
+<Note>
+  `ProductCard` is a `"use client"` component. It uses `useRouter` for navigation, `usePreviewModal` to open the quick-view modal, and `useCart` to add items to the cart.
+</Note>

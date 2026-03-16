@@ -1,0 +1,222 @@
+---
+title: "Shopping cart"
+description: "Manage your cart items and proceed to checkout."
+---
+
+The cart page lists all items the shopper has added, shows an order total, and initiates checkout via a `POST` to the store's `/checkout` API endpoint. Cart state is managed client-side using Zustand with `localStorage` persistence.
+
+## Page layout
+
+The cart page is a **client component** (`"use client"`). It uses a 12-column CSS grid on desktop:
+
+| Section | Columns | Contents |
+|---|---|---|
+| Item list | `lg:col-span-7` | Scrollable list of `CartItem` rows |
+| Order summary | `lg:col-span-5` | Total price and checkout button (`Summary`) |
+
+On mobile both sections stack vertically.
+
+## Hydration guard
+
+Because cart state is read from `localStorage`, rendering on the server would produce a mismatch with the client. The page guards against this with an `isMounted` flag:
+
+```tsx
+const CartPage = () => {
+  const [isMounted, setIsMounted] = useState(false);
+  const cart = useCart();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null; // Render nothing until client hydration is complete
+  }
+  // ...
+};
+```
+
+The component returns `null` on the first render (which runs on the server and during SSR), then immediately re-renders on the client once `useEffect` fires and sets `isMounted` to `true`.
+
+## `useCart` hook
+
+Cart state lives in a Zustand store defined in `hooks/use-cart.ts`. The store is typed with the `CartStore` interface:
+
+```typescript
+interface CartStore {
+  items: Product[];
+  addItem: (data: Product) => void;
+  removeItem: (id: string) => void;
+  removeAll: () => void;
+}
+```
+
+### Full hook source
+
+```typescript
+import { create } from "zustand";
+import { CartStore, Product } from "@/types/types";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "react-hot-toast";
+
+const useCart = create(
+  persist<CartStore>(
+    (set, get) => ({
+      items: [],
+      addItem: (data: Product) => {
+        const currentItems = get().items;
+        const existingItem = currentItems.find((item) => item.id === data.id);
+
+        if (existingItem) {
+          return toast("Item already in cart.");
+        }
+
+        set({ items: [...get().items, data] });
+        toast.success("Item added to cart.");
+      },
+      removeItem: (id: string) => {
+        set({ items: [...get().items.filter((item) => item.id !== id)] });
+        toast.success("Item removed from the cart");
+      },
+      removeAll: () => set({ items: [] }),
+    }),
+    {
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
+
+export default useCart;
+```
+
+### Cart operations
+
+| Method | Behaviour |
+|---|---|
+| `addItem(data)` | Adds the product to `items`. If the product is already present (matched by `id`), shows a toast and does nothing — duplicate cart entries are prevented. |
+| `removeItem(id)` | Filters out the product with the given `id` from `items` and shows a success toast. |
+| `removeAll()` | Replaces `items` with an empty array. Called automatically by `Summary` after a successful checkout redirect. |
+
+<Note>
+  Cart state is persisted to `localStorage` under the key `"cart-storage"` using Zustand's `persist` middleware with `createJSONStorage(() => localStorage)`. The cart survives page refreshes and browser restarts until the user checks out or manually clears their browser storage.
+</Note>
+
+## `CartItem` component
+
+`app/(routes)/cart/components/CartItem.tsx` renders a single line item. It shows the product thumbnail, name, color, size, and price, with an `X` icon button that calls `cart.removeItem(data.id)`.
+
+```tsx
+"use client";
+const CartItem = ({ data }: CartItemsProps) => {
+  const cart = useCart();
+  const onRemove = () => {
+    cart.removeItem(data.id);
+  };
+  return (
+    <li className="flex py-6 border-b">
+      {/* 24×24 / 48×48 product thumbnail */}
+      <Image fill src={data.images[0].url} alt="" className="object-cover object-center" />
+      <div className="relative ml-4 flex flex-1 flex-col justify-between sm:ml-6">
+        {/* Remove button */}
+        <IconButton onClick={onRemove} icon={<X size={15} />} />
+        <p className="text-lg font-semibold text-black">{data.name}</p>
+        <p className="text-gray-500">{data.color.name}</p>
+        <p className="text-gray-500">{data.size.name}</p>
+        <Currency value={data.price} />
+      </div>
+    </li>
+  );
+};
+```
+
+## `Summary` component
+
+`app/(routes)/cart/components/Summary.tsx` displays the running total and handles checkout.
+
+**Total calculation:**
+
+```typescript
+const totalPrice = items.reduce((total, item) => {
+  return total + Number(item.price);
+}, 0);
+```
+
+Note that each product has a single price — there is no quantity field, so adding the same item twice is prevented by `addItem`'s duplicate check.
+
+**Checkout flow:**
+
+```typescript
+const onCheckout = async () => {
+  setIsLoading(true);
+  const response = await axios.post(
+    `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
+    { productIds: items.map((item) => item.id) }
+  );
+  window.location = response.data.url; // Redirects to Stripe checkout
+};
+```
+
+The backend returns a Stripe Checkout session URL. The browser is hard-navigated to that URL via `window.location`. On return, `Summary` reads the `?success` or `?canceled` query param and either clears the cart or shows an error toast:
+
+```typescript
+useEffect(() => {
+  if (searchParams.get("success")) {
+    toast.success("Payment completed.");
+    removeAll();
+  }
+  if (searchParams.get("canceled")) {
+    toast.error("Something went wrong.");
+  }
+}, [searchParams, removeAll]);
+```
+
+## Full cart page source
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import Container from "@/components/ui/Container";
+import useCart from "@/hooks/use-cart";
+import Summary from "./components/Summary";
+import CartItem from "./components/CartItem";
+
+const CartPage = () => {
+  const [isMounted, setIsMounted] = useState(false);
+  const cart = useCart();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white">
+      <Container>
+        <div className="px-4 py-16 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-black">Shopping Cart</h1>
+          <div className="mt-12 lg:grid lg:grid-cols-12 lg:items-start gap-x-12">
+            <div className="lg:col-span-7">
+              {cart.items.length === 0 && (
+                <p className="text-neutral-500">No items added to cart.</p>
+              )}
+              <ul>
+                {cart.items.map((item) => (
+                  <CartItem key={item.id} data={item} />
+                ))}
+              </ul>
+            </div>
+            <Summary />
+          </div>
+        </div>
+      </Container>
+    </div>
+  );
+};
+
+export default CartPage;
+```

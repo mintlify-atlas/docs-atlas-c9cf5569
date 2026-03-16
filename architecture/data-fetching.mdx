@@ -1,0 +1,127 @@
+---
+title: "Data fetching"
+description: How E-Dokan fetches product data from the external API.
+---
+
+All data in E-Dokan originates from an external REST API. The base URL is injected at build time via the `NEXT_PUBLIC_API_URL` environment variable. Each resource has a dedicated **action function** in the `actions/` directory. These are plain async functions — not API routes — called directly inside server components.
+
+## Environment variable
+
+Set the base URL in your `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_API_URL=https://your-api-domain.com/api/store-id
+```
+
+The `NEXT_PUBLIC_` prefix exposes the variable to both server and client bundles. Every action constructs its endpoint URL from this variable:
+
+```tsx
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/products`;
+```
+
+<Warning>
+  If the API is hosted on a different domain from the Next.js app, the API server must return the appropriate `Access-Control-Allow-Origin` CORS header. Without it, requests from the browser (such as those triggered by client components) will be blocked.
+</Warning>
+
+## Action functions
+
+The table below lists all seven action functions and their corresponding API endpoints.
+
+| Function | File | Endpoint |
+|---|---|---|
+| `getBillboard` | `actions/get-billboard.tsx` | `GET /billboards/:id` |
+| `getProducts` | `actions/get-products.tsx` | `GET /products[?query]` |
+| `getProduct` | `actions/get-product.tsx` | `GET /products/:id` |
+| `getCategories` | `actions/get-catgeories.tsx` | `GET /categories` |
+| `getCategory` | `actions/get-category.tsx` | `GET /categories/:id` |
+| `getSizes` | `actions/get-sizes.tsx` | `GET /sizes` |
+| `getColors` | `actions/get-colors.tsx` | `GET /colors` |
+
+## Query parameter building — `getProducts`
+
+`getProducts` is the most complex action. It accepts an optional `Query` object and builds a query string from whichever fields are present:
+
+```tsx actions/get-products.tsx
+import { Product } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/products`;
+
+interface Query {
+  categoryId?: string;
+  colorId?: string;
+  sizeId?: string;
+  isFeatured?: boolean;
+}
+
+const getProducts = async ({
+  categoryId,
+  colorId,
+  sizeId,
+  isFeatured,
+}: Query): Promise<Product[]> => {
+  // Create an array to hold the query parameters
+  const queryParams = [];
+
+  // Add each query parameter to the array if it exists
+  if (categoryId) queryParams.push(`categoryId=${categoryId}`);
+  if (colorId) queryParams.push(`colorId=${colorId}`);
+  if (sizeId) queryParams.push(`sizeId=${sizeId}`);
+  if (isFeatured !== undefined) queryParams.push(`isFeatured=${isFeatured}`);
+
+  // If there are any query parameters, join them with "&" and append to the URL
+  const urlWithQuery =
+    queryParams.length > 0 ? `${URL}?${queryParams.join("&")}` : URL;
+
+  // Make the fetch request with the constructed URL
+  const res = await fetch(urlWithQuery);
+  return res.json();
+};
+
+export default getProducts;
+```
+
+Example call sites:
+
+```tsx
+// Home page — featured products only
+const product = await getProducts({ isFeatured: true });
+
+// Category page — filtered by category, color, and size from URL search params
+const products = await getProducts({
+  categoryId: params.categoryId,
+  colorId: searchParams.colorId,
+  sizeId: searchParams.sizeId,
+});
+
+// Product page — suggestions from the same category
+const suggestedProducts = await getProducts({
+  categoryId: product?.category?.id,
+});
+```
+
+## Cache revalidation
+
+Every server page that calls an action exports:
+
+```tsx
+export const revalidate = 0;
+```
+
+Setting `revalidate` to `0` **disables Incremental Static Regeneration** for that route. Next.js will re-fetch data from the external API on every incoming request, ensuring product listings, prices, and billboard images are always current.
+
+## Image domains — Cloudinary
+
+Product images are hosted on Cloudinary. The `next.config.js` allowlists the Cloudinary hostname so Next.js `<Image />` can optimise and serve those images:
+
+```javascript next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+    images: {
+        domains: ["res.cloudinary.com"]
+    }
+}
+
+module.exports = nextConfig
+```
+
+Without this entry, any `<Image src="https://res.cloudinary.com/...">` call would throw a configuration error at runtime.

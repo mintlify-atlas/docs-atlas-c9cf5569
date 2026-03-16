@@ -1,97 +1,46 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "E-Dokan Store"
+description: "A modern Next.js 13 e-commerce storefront with product browsing, category filtering, and a persistent shopping cart."
 ---
 
-## Setting up
-
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Get started" icon="rocket" href="/quickstart">
+    Set up and run E-Dokan locally in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Connect to your API backend and configure environment variables.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core features" icon="store" href="/features/homepage">
+    Explore homepage, categories, products, and the shopping cart.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API reference" icon="code" href="/api-reference/get-products">
+    Browse data-fetching actions and Zustand hooks.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What is E-Dokan?
 
-Everything you need to create world-class documentation.
+E-Dokan is a full-featured e-commerce storefront built with **Next.js 13 App Router**. It fetches all product data, categories, and billboards from an external REST API, letting you focus on the shopping experience rather than backend infrastructure.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Highlights
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={3}>
+  <Card title="Featured products" icon="star">
+    A hero billboard and featured product grid greet shoppers on the homepage.
+  </Card>
+  <Card title="Category filtering" icon="filter">
+    Filter products by size and color within any category page.
+  </Card>
+  <Card title="Persistent cart" icon="cart-shopping">
+    Cart state is stored in localStorage and survives page reloads.
+  </Card>
+  <Card title="Quick-view modal" icon="eye">
+    Preview products without leaving the current page.
+  </Card>
+  <Card title="Responsive UI" icon="mobile">
+    Mobile-first layout with dedicated filter drawer on small screens.
+  </Card>
+  <Card title="TypeScript" icon="shield-check">
+    Fully typed codebase with strict interfaces for all data models.
+  </Card>
+</CardGroup>

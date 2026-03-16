@@ -1,0 +1,124 @@
+---
+title: "usePreviewModal"
+description: "Zustand hook for controlling the product quick-view modal. Manages open/close state and which product is currently being previewed."
+---
+
+## Overview
+
+`usePreviewModal` is a lightweight Zustand store with no persistence. It holds the open/closed state of the product preview modal and the `Product` data to display inside it.
+
+## Store interface
+
+```typescript types/types.ts
+export interface PreviewModalStore {
+  isOpen: boolean;
+  data?: Product;
+  onOpen: (data: Product) => void;
+  onClose: () => void;
+}
+```
+
+## Properties and methods
+
+<ResponseField name="isOpen" type="boolean" required>
+  Whether the preview modal is currently visible. Starts as `false`.
+</ResponseField>
+
+<ResponseField name="data" type="Product">
+  The product currently loaded into the modal. `undefined` until `onOpen` is called for the first time.
+</ResponseField>
+
+<ResponseField name="onOpen" type="(data: Product) => void" required>
+  Opens the modal and sets `data` to the given product. Calling `onOpen` while the modal is already open replaces the current product.
+</ResponseField>
+
+<ResponseField name="onClose" type="() => void" required>
+  Closes the modal by setting `isOpen` to `false`. The `data` field is not cleared so the modal can animate out without a flash of empty content.
+</ResponseField>
+
+## Source
+
+```typescript hooks/use-preview-modal.ts
+import { create } from "zustand";
+import { Product } from "@/types/types";
+
+interface PreviewModalStore {
+  isOpen: boolean;
+  data?: Product;
+  onOpen: (data: Product) => void;
+  onClose: () => void;
+}
+
+const usePreviewModal = create<PreviewModalStore>((set) => ({
+  isOpen: false,
+  data: undefined,
+  onOpen: (data: Product) => set({ isOpen: true, data }),
+  onClose: () => set({ isOpen: false }),
+}));
+
+export default usePreviewModal;
+```
+
+## ModalProvider requirement
+
+<Warning>
+  `usePreviewModal` only controls state. For the modal UI to actually render, you must mount a `ModalProvider` (or equivalent consumer of `usePreviewModal`) near the root of your layout. Without it, calling `onOpen` updates state but nothing is displayed.
+
+  ```tsx app/layout.tsx
+  import ModalProvider from "@/providers/modal-provider";
+
+  export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+      <html>
+        <body>
+          <ModalProvider />
+          {children}
+        </body>
+      </html>
+    );
+  }
+  ```
+</Warning>
+
+## Usage example
+
+### Triggering the preview from ProductCard
+
+```tsx components/product-card.tsx
+import usePreviewModal from "@/hooks/use-preview-modal";
+
+const ProductCard = ({ data }: ProductCardProps) => {
+  const previewModal = usePreviewModal();
+
+  const onPreview = () => {
+    previewModal.onOpen(data);
+  };
+
+  return (
+    <IconButton
+      onClick={onPreview}
+      icon={<Expand size={20} />}
+    />
+  );
+};
+```
+
+### Consuming state inside ModalProvider
+
+```tsx providers/modal-provider.tsx
+import usePreviewModal from "@/hooks/use-preview-modal";
+
+const ModalProvider = () => {
+  const previewModal = usePreviewModal();
+
+  return (
+    <PreviewModal
+      isOpen={previewModal.isOpen}
+      onClose={previewModal.onClose}
+      product={previewModal.data}
+    />
+  );
+};
+
+export default ModalProvider;
+```

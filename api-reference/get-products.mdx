@@ -1,0 +1,201 @@
+---
+title: "getProducts"
+description: "Fetch a list of products with optional filtering by category, color, size, or featured status."
+---
+
+## Function signature
+
+```typescript
+interface Query {
+  categoryId?: string;
+  colorId?: string;
+  sizeId?: string;
+  isFeatured?: boolean;
+}
+
+const getProducts = async ({
+  categoryId,
+  colorId,
+  sizeId,
+  isFeatured,
+}: Query): Promise<Product[]>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/products
+GET ${NEXT_PUBLIC_API_URL}/products?categoryId=<id>&colorId=<id>&sizeId=<id>&isFeatured=true
+```
+
+Query parameters are appended only when provided. Multiple filters are joined with `&`.
+
+## Parameters
+
+<ParamField query="categoryId" type="string">
+  Filter products by category ID. When omitted, products from all categories are returned.
+</ParamField>
+
+<ParamField query="colorId" type="string">
+  Filter products by color ID.
+</ParamField>
+
+<ParamField query="sizeId" type="string">
+  Filter products by size ID.
+</ParamField>
+
+<ParamField query="isFeatured" type="boolean">
+  When `true`, only featured products are returned. When `false`, only non-featured products are returned. Omit to return all products regardless of featured status.
+</ParamField>
+
+## Response
+
+Returns `Promise<Product[]>` — an array of product objects.
+
+<ResponseField name="id" type="string" required>
+  Unique product identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the product.
+</ResponseField>
+
+<ResponseField name="price" type="string" required>
+  Product price as a string.
+</ResponseField>
+
+<ResponseField name="isFeatured" type="boolean" required>
+  Whether the product is featured on the storefront.
+</ResponseField>
+
+<ResponseField name="category" type="Category" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique category identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Category display name.
+    </ResponseField>
+    <ResponseField name="billboard" type="Billboard" required>
+      <Expandable title="properties">
+        <ResponseField name="id" type="string" required>
+          Unique billboard identifier.
+        </ResponseField>
+        <ResponseField name="label" type="string" required>
+          Billboard heading text.
+        </ResponseField>
+        <ResponseField name="imageUrl" type="string" required>
+          URL of the billboard background image.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="size" type="Size" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique size identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Human-readable size name (e.g. "Medium").
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      Size abbreviation (e.g. "M").
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="color" type="Color" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique color identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Human-readable color name (e.g. "White").
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      Hex color value (e.g. `#FFFFFF`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="images" type="Image[]" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique image identifier.
+    </ResponseField>
+    <ResponseField name="url" type="string" required>
+      Public URL of the product image.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Source
+
+```typescript actions/get-products.tsx
+import { Product } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/products`;
+
+interface Query {
+  categoryId?: string;
+  colorId?: string;
+  sizeId?: string;
+  isFeatured?: boolean;
+}
+
+const getProducts = async ({
+  categoryId,
+  colorId,
+  sizeId,
+  isFeatured,
+}: Query): Promise<Product[]> => {
+  const queryParams = [];
+
+  if (categoryId) queryParams.push(`categoryId=${categoryId}`);
+  if (colorId) queryParams.push(`colorId=${colorId}`);
+  if (sizeId) queryParams.push(`sizeId=${sizeId}`);
+  if (isFeatured !== undefined) queryParams.push(`isFeatured=${isFeatured}`);
+
+  const urlWithQuery =
+    queryParams.length > 0 ? `${URL}?${queryParams.join("&")}` : URL;
+
+  const res = await fetch(urlWithQuery);
+  return res.json();
+};
+
+export default getProducts;
+```
+
+## Usage examples
+
+### Homepage — featured products only
+
+```tsx app/(routes)/page.tsx
+import getProducts from "@/actions/get-products";
+
+const HomePage = async () => {
+  const products = await getProducts({ isFeatured: true });
+
+  return (
+    <ProductList title="Featured Products" items={products} />
+  );
+};
+```
+
+### Category page — filtered by category, size, and color
+
+```tsx app/(routes)/category/[categoryId]/page.tsx
+import getProducts from "@/actions/get-products";
+
+const CategoryPage = async ({ params, searchParams }: CategoryProps) => {
+  const products = await getProducts({
+    categoryId: params.categoryId,
+    colorId: searchParams.colorId,
+    sizeId: searchParams.sizeId,
+  });
+
+  return <ProductList title="Products" items={products} />;
+};
+```

@@ -1,0 +1,68 @@
+---
+title: "Introduction"
+description: "E-Dokan is a modern e-commerce storefront built with Next.js 13, offering product browsing, category filtering, and a persistent shopping cart."
+---
+
+## What is E-Dokan?
+
+E-Dokan is a full-featured e-commerce storefront application built with Next.js 13 App Router. It connects to an external REST API backend to display products, categories, and billboards — giving shoppers a seamless browsing and purchasing experience.
+
+<CardGroup cols={2}>
+  <Card title="Quick Setup" icon="rocket" href="/quickstart">
+    Get E-Dokan running locally in minutes with step-by-step instructions.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Connect to your backend API and configure environment variables.
+  </Card>
+  <Card title="Core Features" icon="store" href="/features/homepage">
+    Explore the homepage, categories, products, and cart features.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/get-products">
+    Review the data-fetching actions and state management hooks.
+  </Card>
+</CardGroup>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Featured products" icon="star">
+    The homepage showcases featured products pulled from your API, alongside a configurable hero billboard.
+  </Card>
+  <Card title="Category browsing" icon="grid">
+    Shoppers can browse products by category with real-time size and color filtering.
+  </Card>
+  <Card title="Product detail pages" icon="magnifying-glass">
+    Each product has a dedicated page with an image gallery and related product suggestions.
+  </Card>
+  <Card title="Persistent cart" icon="cart-shopping">
+    The shopping cart uses Zustand with localStorage so items persist across page reloads.
+  </Card>
+  <Card title="Quick-view modal" icon="eye">
+    Shoppers can preview any product in a modal overlay without leaving the current page.
+  </Card>
+  <Card title="Responsive design" icon="mobile">
+    Fully responsive with dedicated mobile filters and a hamburger navigation on small screens.
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+| Technology | Purpose |
+|---|---|
+| [Next.js 13](https://nextjs.org/) | App Router, SSR, image optimization |
+| [TypeScript](https://www.typescriptlang.org/) | Type-safe codebase |
+| [Tailwind CSS](https://tailwindcss.com/) | Utility-first styling |
+| [Zustand](https://github.com/pmndrs/zustand) | Cart and modal state management |
+| [Axios](https://axios-http.com/) | HTTP client for API calls |
+| [React Hot Toast](https://react-hot-toast.com/) | Toast notifications |
+| [Headless UI](https://headlessui.com/) | Accessible UI primitives (Dialog, Transition) |
+| [Lucide React](https://lucide.dev/) | Icon library |
+| [Cloudinary](https://cloudinary.com/) | Product image hosting and delivery |
+
+## Architecture overview
+
+E-Dokan is a **frontend-only** storefront. All product data, categories, billboards, sizes, and colors are fetched from an external API specified by the `NEXT_PUBLIC_API_URL` environment variable. The app uses Next.js server components for data fetching and client components only where interactivity is required (cart, modals, filters).
+
+<Note>
+  E-Dokan requires a compatible backend API. The API URL is configured via `NEXT_PUBLIC_API_URL` in your `.env.local` file.
+</Note>

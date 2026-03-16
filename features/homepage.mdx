@@ -1,0 +1,137 @@
+---
+title: "Homepage"
+description: "Featured products and hero billboard on the E-Dokan homepage."
+---
+
+The E-Dokan homepage is a server component that fetches a hero billboard and a curated list of featured products on every request, then renders them inside a shared `Container` layout.
+
+## Layout overview
+
+The page is composed of two stacked sections inside a `Container`:
+
+1. **Billboard** — a full-width hero banner rendered from a remote image URL and a text label.
+2. **Featured products grid** — a responsive 1–4 column grid of `ProductCard` tiles, filtered to only `isFeatured: true` items.
+
+<CardGroup cols={2}>
+  <Card title="Billboard hero" icon="image">
+    Displays the store's promotional banner with a background image and bold centred label text. Renders as a `2.4:1` aspect ratio on desktop, square on mobile.
+  </Card>
+  <Card title="Featured products" icon="grid-2x2">
+    Renders up to all featured products in a 1-column (mobile) → 4-column (desktop) responsive grid using `ProductList`.
+  </Card>
+  <Card title="Server component" icon="server">
+    The entire page is an `async` React server component — no client-side JavaScript is needed to fetch or render the initial content.
+  </Card>
+  <Card title="Always fresh data" icon="refresh-cw">
+    `export const revalidate = 0` disables Next.js incremental static regeneration, so every request hits the API for the latest billboard and products.
+  </Card>
+</CardGroup>
+
+## Data fetching
+
+### `getBillboard`
+
+The billboard is fetched with a hardcoded ID:
+
+```typescript
+const billboard = await getBillboard("75c73606-f10d-48eb-9d57-440b98c484f6");
+```
+
+This ID identifies the store's primary promotional billboard in the CMS/backend. The returned `Billboard` object has the shape:
+
+```typescript
+interface Billboard {
+  id: string;
+  label: string;    // Text displayed over the image
+  imageUrl: string; // Background image URL
+}
+```
+
+### `getProducts({ isFeatured: true })`
+
+Only products marked as featured in the backend are shown on the homepage:
+
+```typescript
+const product = await getProducts({ isFeatured: true });
+```
+
+The `isFeatured` flag is set per-product in the store admin. This keeps the homepage curated without any frontend logic.
+
+### `revalidate = 0`
+
+```typescript
+export const revalidate = 0;
+```
+
+Setting `revalidate` to `0` tells Next.js to never cache the page at the CDN/ISR layer. Every incoming request triggers a fresh fetch from the API, ensuring promotional content and featured product selections are always up to date.
+
+## Full page source
+
+```tsx
+import getBillboard from "@/actions/get-billboard";
+import getProducts from "@/actions/get-products";
+import Billboard from "@/components/Billboard";
+import ProductList from "@/components/ProductList";
+import Container from "@/components/ui/Container";
+import React from "react";
+
+export const revalidate = 0;
+
+const HomePage = async () => {
+  const billboard = await getBillboard("75c73606-f10d-48eb-9d57-440b98c484f6");
+  const product = await getProducts({ isFeatured: true });
+  return (
+    <Container>
+      <div className="space-y-20 pb-10">
+        <Billboard data={billboard} />
+        <div className="flex flex-col gap-y-8 px-4 sm:px-6 lg:px-8">
+          <ProductList title="Featured Product" items={product} />
+        </div>
+      </div>
+    </Container>
+  );
+};
+
+export default HomePage;
+```
+
+## Component breakdown
+
+### `Billboard`
+
+Located at `components/Billboard.tsx`. Accepts a single `data` prop of type `Billboard` and renders the image as a CSS `background-image` with the label centred on top.
+
+```tsx
+const Billboard = ({ data }: BillboardProps) => (
+  <div className="p-4 sm:p-6 lg:p-8 rounded-xl overflow-hidden">
+    <div
+      style={{ backgroundImage: `url(${data?.imageUrl})` }}
+      className="rounded-xl relative aspect-square md:aspect-[2.4/1] overflow-hidden bg-cover"
+    >
+      <div className="h-full w-full flex flex-col justify-center items-center text-center gap-y-8">
+        <div className="font-bold text-3xl sm:text-5xl lg:text-6xl sm:max-w-xl max-w-xs">
+          {data?.label}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+```
+
+### `ProductList`
+
+Located at `components/ProductList.tsx`. Renders a section heading and a responsive CSS grid of `ProductCard` components. Shows a `NoResults` message when `items` is empty.
+
+```tsx
+const ProductList = ({ items, title }: ProductList) => (
+  <div className="space-y-4">
+    <h3 className="font-bold text-3xl">{title}</h3>
+    {items.length === 0 && <NoResults />}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {items.map((item) => (
+        <ProductCard key={item.id} data={item} />
+      ))}
+    </div>
+  </div>
+);
+```

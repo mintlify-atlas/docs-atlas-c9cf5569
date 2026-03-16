@@ -1,0 +1,77 @@
+---
+title: "getBillboard"
+description: "Fetch a billboard by ID for use as a hero display on the homepage or category pages."
+---
+
+## Function signature
+
+```typescript
+const getBillboard = async (id: string): Promise<Billboard>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/billboards/:id
+```
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the billboard to retrieve.
+</ParamField>
+
+## Response
+
+Returns `Promise<Billboard>` — a single billboard object.
+
+<ResponseField name="id" type="string" required>
+  Unique billboard identifier.
+</ResponseField>
+
+<ResponseField name="label" type="string" required>
+  Heading text displayed over the billboard image.
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string" required>
+  Public URL of the full-width background image.
+</ResponseField>
+
+## Source
+
+```typescript actions/get-billboard.tsx
+import { Billboard } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/billboards`;
+
+const getBillboard = async (id: string): Promise<Billboard> => {
+  const res = await fetch(`${URL}/${id}`);
+  return res.json();
+};
+
+export default getBillboard;
+```
+
+## Usage example
+
+### Homepage — loading the hero billboard
+
+```tsx app/(routes)/page.tsx
+import getBillboard from "@/actions/get-billboard";
+
+const HomePage = async () => {
+  const billboard = await getBillboard("<your-billboard-id>");
+
+  return (
+    <div>
+      <Billboard data={billboard} />
+    </div>
+  );
+};
+
+export default HomePage;
+```
+
+<Tip>
+  The billboard ID is typically a static value set per environment. Store it alongside your other environment variables or define it as a constant in your page component.
+</Tip>

@@ -1,0 +1,189 @@
+---
+title: "State management"
+description: Zustand-powered cart and modal state with localStorage persistence.
+---
+
+E-Dokan uses [Zustand](https://zustand-demo.pmnd.rs/) for all client-side state. There are two stores:
+
+<CardGroup cols={2}>
+  <Card title="Cart store" icon="shopping-cart">
+    Persisted to `localStorage`. Survives page refreshes and browser restarts.
+  </Card>
+  <Card title="Preview modal store" icon="eye">
+    Ephemeral in-memory state. Resets when the page is reloaded.
+  </Card>
+</CardGroup>
+
+## Cart store — `useCart`
+
+The cart store implements the `CartStore` interface defined in `types/types.ts`:
+
+```typescript types/types.ts
+export interface CartStore {
+  items: Product[];
+  addItem: (data: Product) => void;
+  removeItem: (id: string) => void;
+  removeAll: () => void;
+}
+```
+
+The full implementation uses the Zustand `persist` middleware to write state to `localStorage` automatically:
+
+```typescript hooks/use-cart.ts
+import { create } from "zustand";
+import { CartStore, Product } from "@/types/types";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "react-hot-toast";
+
+const useCart = create(
+  persist<CartStore>(
+    (set, get) => ({
+      items: [],
+      addItem: (data: Product) => {
+        const currentItems = get().items;
+        const existingItem = currentItems.find((item) => item.id === data.id);
+
+        if (existingItem) {
+          return toast("Item already in cart.");
+        }
+
+        set({ items: [...get().items, data] });
+        toast.success("Item added to cart.");
+      },
+      removeItem: (id: string) => {
+        set({ items: [...get().items.filter((item) => item.id !== id)] });
+        toast.success("Item removed from the cart");
+      },
+      removeAll: () => set({ items: [] }),
+    }),
+    {
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
+
+export default useCart;
+```
+
+### How `persist` works
+
+`persist` is a Zustand middleware that wraps your store creator. On every state update it serialises the store to the configured `storage` target. On initialisation it reads back any previously saved state and merges it into the initial store values.
+
+`createJSONStorage(() => localStorage)` creates a storage adapter that calls `JSON.stringify` on writes and `JSON.parse` on reads, using the browser's `localStorage` API as the underlying store.
+
+<Tip>
+  The cart is stored in `localStorage` under the key `cart-storage`. You can inspect or clear it in your browser's DevTools under **Application → Local Storage**.
+</Tip>
+
+## Preview modal store — `usePreviewModal`
+
+The preview modal is a lightweight ephemeral store with no persistence:
+
+```typescript hooks/use-preview-modal.ts
+import { create } from "zustand";
+import { Product } from "@/types/types";
+
+interface PreviewModalStore {
+  isOpen: boolean;
+  data?: Product;
+  onOpen: (data: Product) => void;
+  onClose: () => void;
+}
+
+const usePreviewModal = create<PreviewModalStore>((set) => ({
+  isOpen: false,
+  data: undefined,
+  onOpen: (data: Product) => set({ isOpen: true, data }),
+  onClose: () => set({ isOpen: false }),
+}));
+
+export default usePreviewModal;
+```
+
+Any component can open the modal by calling `usePreviewModal().onOpen(product)`. The modal renders inside `ModalProvider`, which is mounted once in the root layout.
+
+## Hydration guard pattern
+
+Zustand stores that read from `localStorage` are **browser-only**. During server-side rendering, `localStorage` does not exist. If a server-rendered page reads a Zustand store directly, React will throw a hydration mismatch between the server-rendered HTML (which sees the initial empty state) and the client (which sees the persisted state).
+
+Both `CartPage` and `ModalProvider` solve this with an `isMounted` guard:
+
+```tsx app/(routes)/cart/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import useCart from "@/hooks/use-cart";
+
+const CartPage = () => {
+  const [isMounted, setIsMounted] = useState(false);
+  const cart = useCart();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  // ... render cart items
+};
+```
+
+`useState(false)` initialises `isMounted` to `false` on both server and client, so the first render always returns `null`. After the component mounts in the browser, `useEffect` fires and sets `isMounted` to `true`, triggering a re-render with the real cart data. This guarantees server and client output match on the initial render.
+
+`ModalProvider` applies the same pattern before rendering `<PreviewModal />`:
+
+```tsx providers/modal-provider.tsx
+"use client";
+import PreviewModal from "@/components/preview-modal";
+import React, { useEffect, useState } from "react";
+
+const ModalProvider = () => {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  if (!isMounted) return null;
+  return (
+    <>
+      <PreviewModal />
+    </>
+  );
+};
+
+export default ModalProvider;
+```
+
+## Providers in the root layout
+
+Both providers are registered once at the top of `<body>` in `app/layout.tsx`:
+
+```tsx app/layout.tsx
+<body className={font.className}>
+  <ModalProvider />
+  <ToastProvider />
+  <Navbar />
+  {children}
+  <Footer />
+</body>
+```
+
+`ToastProvider` wraps `react-hot-toast`'s `<Toaster />` component, which is the sink for all `toast()` calls made by the cart store actions (`addItem`, `removeItem`).
+
+```tsx providers/toast-provider.tsx
+"use client";
+import React from "react";
+import { Toaster } from "react-hot-toast";
+
+const ToastProvider = () => {
+  return (
+    <div>
+      <Toaster />
+    </div>
+  );
+};
+
+export default ToastProvider;
+```

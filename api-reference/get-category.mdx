@@ -1,0 +1,90 @@
+---
+title: "getCategory"
+description: "Fetch a single category by its ID."
+---
+
+## Function signature
+
+```typescript
+const getCategory = async (id: string): Promise<Category>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/categories/:id
+```
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the category to retrieve.
+</ParamField>
+
+## Response
+
+Returns `Promise<Category>` — a single category object.
+
+<ResponseField name="id" type="string" required>
+  Unique category identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Category display name.
+</ResponseField>
+
+<ResponseField name="billboard" type="Billboard" required>
+  The billboard associated with this category.
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique billboard identifier.
+    </ResponseField>
+    <ResponseField name="label" type="string" required>
+      Billboard heading text.
+    </ResponseField>
+    <ResponseField name="imageUrl" type="string" required>
+      URL of the billboard background image.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Source
+
+```typescript actions/get-category.tsx
+import { Category } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/categories`;
+
+const getCategory = async (id: string): Promise<Category> => {
+  const res = await fetch(`${URL}/${id}`);
+  return res.json();
+};
+
+export default getCategory;
+```
+
+## Usage example
+
+### Category page — loading the category name and billboard
+
+```tsx app/(routes)/category/[categoryId]/page.tsx
+import getCategory from "@/actions/get-category";
+
+interface CategoryProps {
+  params: { categoryId: string };
+  searchParams: { colorId: string; sizeId: string };
+}
+
+const CategoryPage = async ({ params, searchParams }: CategoryProps) => {
+  const category = await getCategory(params.categoryId);
+
+  return (
+    <div>
+      <Billboard data={category.billboard} />
+      <h1>{category.name}</h1>
+    </div>
+  );
+};
+
+export default CategoryPage;
+```

@@ -1,0 +1,69 @@
+---
+title: "getColors"
+description: "Fetch all available product colors for use in category page filters."
+---
+
+## Function signature
+
+```typescript
+const getColors = async (): Promise<Color[]>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/colors
+```
+
+This endpoint takes no parameters and returns all available colors.
+
+## Response
+
+Returns `Promise<Color[]>` — an array of color objects.
+
+<ResponseField name="id" type="string" required>
+  Unique color identifier. Used as the `colorId` query parameter in `getProducts`.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Human-readable color name (e.g. `"White"`, `"Black"`, `"Rose"`).
+</ResponseField>
+
+<ResponseField name="value" type="string" required>
+  Hex color code (e.g. `"#FFFFFF"`). Used to render the color swatch in the filter UI.
+</ResponseField>
+
+## Source
+
+```typescript actions/get-colors.tsx
+import { Color } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/colors`;
+
+const getColors = async (): Promise<Color[]> => {
+  const res = await fetch(URL);
+  return res.json();
+};
+
+export default getColors;
+```
+
+## Usage example
+
+### Category page — populating the color filter
+
+```tsx app/(routes)/category/[categoryId]/page.tsx
+import getColors from "@/actions/get-colors";
+
+const CategoryPage = async ({ params, searchParams }: CategoryProps) => {
+  const colors = await getColors();
+
+  return (
+    <div>
+      <Filter data={colors} name="Colors" valueKey="colorId" />
+    </div>
+  );
+};
+
+export default CategoryPage;
+```

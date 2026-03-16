@@ -1,0 +1,288 @@
+---
+title: "Layout components"
+description: "Navbar, footer, and page structure components for the E-Dokan storefront."
+---
+
+Layout and feature components live in `components/` (root level). They compose UI primitives and API data into the visible sections of every page.
+
+---
+
+## Navbar
+
+The top-level application bar rendered in the root layout. It is an **async server component** that fetches the full category list from the API before rendering.
+
+<Note>
+  `Navbar` is an async server component. It cannot be imported or rendered inside any `"use client"` component. Place it only in server layouts or server pages.
+</Note>
+
+Navbar takes no props. Internally it composes:
+
+- A brand logo link (`/`) displaying the text **E-DOKAN**
+- [`MainNav`](#mainnav) — receives the fetched categories
+- [`NavbarActions`](#navbaractions) — cart icon with item count
+
+**Usage**
+
+```tsx
+// app/layout.tsx
+import Navbar from "@/components/Navbar";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Navbar />
+        <main>{children}</main>
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## MainNav
+
+Client component that renders the horizontal category navigation links. It reads `usePathname()` to highlight the currently active route.
+
+```typescript
+// types/types.ts
+export interface MainNavProps {
+  data: Category[];
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  billboard: Billboard;
+}
+```
+
+<ParamField path="data" type="Category[]" required>
+  Array of category objects fetched by `Navbar`. Each category is mapped to a `/category/[id]` link.
+</ParamField>
+
+**Usage**
+
+```tsx
+import MainNav from "@/components/MainNav";
+
+// Rendered inside Navbar — categories are passed down from the server fetch
+<MainNav data={categories} />
+```
+
+---
+
+## NavbarActions
+
+Client component rendered at the far right of the Navbar. Displays a `ShoppingBag` icon button with a live count of items in the cart. Clicking navigates to `/cart`.
+
+NavbarActions takes no props. It reads cart state from the `useCart` Zustand store and uses a mount guard (`isMounted`) to avoid SSR hydration issues.
+
+**Usage**
+
+```tsx
+import NavbarActions from "@/components/NavbarActions";
+
+// Rendered inside Navbar automatically — no props required
+<NavbarActions />
+```
+
+<Note>
+  `NavbarActions` is a `"use client"` component. It returns `null` until after the first client render to prevent server/client HTML mismatches on the item count badge.
+</Note>
+
+---
+
+## Footer
+
+A stateless server component that renders a white bordered footer with a dynamic copyright line. The year range updates automatically: it shows `2023` in 2023 and `2023 – <currentYear>` in all subsequent years.
+
+Footer takes no props.
+
+**Usage**
+
+```tsx
+// app/layout.tsx
+import Footer from "@/components/Footer";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <main>{children}</main>
+        <Footer />
+      </body>
+    </html>
+  );
+}
+```
+
+---
+
+## Billboard
+
+A full-width hero banner that renders a background image with a bold centred label. Used at the top of the home page and at the top of individual category pages.
+
+```typescript
+// types/types.ts
+export interface BillboardProps {
+  data: Billboard;
+}
+
+export interface Billboard {
+  id: string;
+  label: string;
+  imageUrl: string;
+}
+```
+
+<ParamField path="data" type="Billboard" required>
+  Billboard data object containing the `imageUrl` (used as a CSS `background-image`) and the `label` text displayed as an overlay heading.
+</ParamField>
+
+**Usage**
+
+```tsx
+import Billboard from "@/components/Billboard";
+
+// app/(routes)/page.tsx — home page billboard
+const billboard = await getBillboard("<billboard-id>");
+
+<Billboard data={billboard} />
+```
+
+---
+
+## ProductList
+
+A section heading paired with a responsive product grid. The grid adapts from 1 column on mobile up to 4 columns on large screens. Renders [`NoResults`](/components/ui-components#noresults) when `items` is empty.
+
+```typescript
+// types/types.ts
+export interface ProductList {
+  title: string;
+  items: Product[];
+}
+```
+
+<ParamField path="title" type="string" required>
+  Section heading rendered as an `h3` above the grid.
+</ParamField>
+
+<ParamField path="items" type="Product[]" required>
+  Array of products to display. An empty array triggers the `NoResults` fallback.
+</ParamField>
+
+**Usage**
+
+```tsx
+import ProductList from "@/components/ProductList";
+
+const featuredProducts = await getProducts({ isFeatured: true });
+
+<ProductList title="Featured Products" items={featuredProducts} />
+```
+
+---
+
+## Gallery
+
+Client component that renders a Headless UI tabbed image gallery. A 4-column thumbnail strip sits below the main image panel; clicking a thumbnail switches the active panel.
+
+```typescript
+// components/Gallery/index.tsx
+interface GalleryProps {
+  images: ImageType[];
+}
+
+// Underlying Image type from types/types.ts
+export interface Image {
+  id: string;
+  url: string;
+}
+```
+
+<ParamField path="images" type="Image[]" required>
+  Ordered array of product images. The first item is shown by default. Each image object must have a unique `id` (used as the React key) and a `url` for `next/image`.
+</ParamField>
+
+**Usage**
+
+```tsx
+import Gallery from "@/components/Gallery";
+
+// app/(routes)/product/[productId]/page.tsx
+const product = await getProduct(params.productId);
+
+<Gallery images={product.images} />
+```
+
+<Tip>
+  Gallery is built on the Headless UI `Tab` component. The active thumbnail receives a black `ring` outline via the `selected` render prop passed by Headless UI.
+</Tip>
+
+---
+
+## Info
+
+Client component that renders the product detail panel alongside the Gallery. Displays the product name, formatted price, size label, colour swatch, and an **Add to Cart** button. Writes to the cart via the `useCart` Zustand store.
+
+```typescript
+// types/types.ts
+export interface InfoProps {
+  data: Product;
+}
+
+export interface Product {
+  id: string;
+  category: Category;
+  name: string;
+  price: string;
+  isFeatured: boolean;
+  size: Size;
+  color: Color;
+  images: Image[];
+}
+```
+
+<ParamField path="data" type="Product" required>
+  Full product object. Rendered fields: `data.name`, `data.price`, `data.size.name`, `data.color.value` (used as a CSS background colour for the swatch).
+</ParamField>
+
+**Usage**
+
+```tsx
+import Info from "@/components/Info";
+
+// app/(routes)/product/[productId]/page.tsx
+<Info data={product} />
+```
+
+---
+
+## PreviewModal
+
+Client component that opens a quick-view overlay for a product without navigating away from the current page. It reads from the `usePreviewModal` Zustand store and renders `null` when no product is selected.
+
+PreviewModal takes no props. The modal is triggered by calling `previewModal.onOpen(product)` from within [`ProductCard`](/components/ui-components#productcard).
+
+Internally it composes:
+
+- [`Modal`](/components/ui-components#modal) — provides the overlay, backdrop, and close button
+- [`Gallery`](#gallery) — renders the product image tabs (spans 4/5 columns)
+- [`Info`](#info) — renders the product detail panel (spans 8/7 columns)
+
+**Usage**
+
+```tsx
+// app/layout.tsx or a root client boundary
+import PreviewModal from "@/components/preview-modal";
+
+// Mount once at the root — ProductCard opens it via the Zustand store
+<PreviewModal />
+```
+
+<Warning>
+  `PreviewModal` must be mounted exactly once in a client boundary high enough in the tree to be visible from all `ProductCard` instances. Mounting it multiple times will result in multiple overlapping modals.
+</Warning>

@@ -1,0 +1,153 @@
+---
+title: "useCart"
+description: "Zustand hook for managing the persistent shopping cart. Cart state is stored in localStorage and survives page refreshes."
+---
+
+## Overview
+
+`useCart` is a Zustand store with persistence. Items are saved to `localStorage` under the key `cart-storage` using the `persist` middleware, so the cart survives full page reloads.
+
+## Store interface
+
+```typescript types/types.ts
+export interface CartStore {
+  items: Product[];
+  addItem: (data: Product) => void;
+  removeItem: (id: string) => void;
+  removeAll: () => void;
+}
+```
+
+## Properties and methods
+
+<ResponseField name="items" type="Product[]" required>
+  The array of products currently in the cart. Each entry is a full `Product` object as returned by `getProduct` or `getProducts`.
+</ResponseField>
+
+<ResponseField name="addItem" type="(data: Product) => void" required>
+  Adds a product to the cart. If the product is already present (matched by `id`), the item is not duplicated and a neutral toast notification is shown instead. On successful addition, a success toast is displayed.
+</ResponseField>
+
+<ResponseField name="removeItem" type="(id: string) => void" required>
+  Removes the product with the given `id` from the cart and displays a success toast notification.
+</ResponseField>
+
+<ResponseField name="removeAll" type="() => void" required>
+  Clears all items from the cart. No toast is shown.
+</ResponseField>
+
+## Persistence
+
+The store uses Zustand's `persist` middleware with `createJSONStorage(() => localStorage)`.
+
+| Setting | Value |
+| --- | --- |
+| Storage key | `cart-storage` |
+| Storage backend | `localStorage` |
+| Serialization | JSON |
+
+<Note>
+  Because `localStorage` is not available during server-side rendering, you must guard against hydration mismatches when reading `items` in a component. A common pattern is to track a mounted state:
+
+  ```tsx
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
+  ```
+
+  Call this before rendering any cart-dependent UI to avoid SSR/client mismatch errors.
+</Note>
+
+## Source
+
+```typescript hooks/use-cart.ts
+import { create } from "zustand";
+import { CartStore, Product } from "@/types/types";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "react-hot-toast";
+
+const useCart = create(
+  persist<CartStore>(
+    (set, get) => ({
+      items: [],
+      addItem: (data: Product) => {
+        const currentItems = get().items;
+        const existingItem = currentItems.find((item) => item.id === data.id);
+
+        if (existingItem) {
+          return toast("Item already in cart.");
+        }
+
+        set({ items: [...get().items, data] });
+        toast.success("Item added to cart.");
+      },
+      removeItem: (id: string) => {
+        set({ items: [...get().items.filter((item) => item.id !== id)] });
+        toast.success("Item removed from the cart");
+      },
+      removeAll: () => set({ items: [] }),
+    }),
+    {
+      name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+);
+
+export default useCart;
+```
+
+## Usage examples
+
+### Adding an item — from ProductCard or Info
+
+```tsx components/product-card.tsx
+import useCart from "@/hooks/use-cart";
+
+const ProductCard = ({ data }: ProductCardProps) => {
+  const cart = useCart();
+
+  const onAddToCart = () => {
+    cart.addItem(data);
+  };
+
+  return (
+    <button onClick={onAddToCart}>Add to cart</button>
+  );
+};
+```
+
+### Removing an item — from CartItem
+
+```tsx components/cart-item.tsx
+import useCart from "@/hooks/use-cart";
+
+const CartItem = ({ data }: CartItemsProps) => {
+  const cart = useCart();
+
+  return (
+    <button onClick={() => cart.removeItem(data.id)}>Remove</button>
+  );
+};
+```
+
+### Clearing the cart — after a successful order
+
+```tsx components/summary.tsx
+import useCart from "@/hooks/use-cart";
+
+const Summary = () => {
+  const removeAll = useCart((state) => state.removeAll);
+
+  const onCheckout = async () => {
+    // ... process order
+    removeAll();
+  };
+
+  return <button onClick={onCheckout}>Checkout</button>;
+};
+```

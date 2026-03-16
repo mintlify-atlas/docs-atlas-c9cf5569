@@ -1,0 +1,177 @@
+---
+title: "Product detail pages"
+description: "View full product details with image gallery and related suggestions."
+---
+
+The product detail page displays a full-width image gallery alongside the product's name, price, size, color, and an add-to-cart button. Below the fold a "You may Like" section suggests related products from the same category.
+
+## URL structure
+
+```
+/product/[productId]
+```
+
+The `productId` segment is the product's unique ID from the backend. Example:
+
+```
+/product/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+## Data fetching
+
+The page is an `async` server component that makes two API calls:
+
+```tsx
+const product = await getProduct(params.productId);
+const suggestedProducts = await getProducts({
+  categoryId: product?.category?.id,
+});
+```
+
+- `getProduct` fetches a single `Product` including its `images`, `size`, `color`, and parent `category`.
+- `getProducts({ categoryId })` fetches all products in the same category to populate the related products list.
+
+## Page layout
+
+On desktop the page uses a two-column CSS grid (`lg:grid-cols-2`). On mobile both sections stack vertically.
+
+```
+┌──────────────────────────────────────────────────┐
+│  Image Gallery (col 1)  │  Product Info (col 2)   │
+│  - Main image panel     │  - Name                 │
+│  - Thumbnail strip      │  - Price                │
+│                         │  - Size                 │
+│                         │  - Color swatch         │
+│                         │  - Add To Cart button   │
+├──────────────────────────────────────────────────┤
+│  You may Like (full width)                        │
+│  Related products grid                            │
+└──────────────────────────────────────────────────┘
+```
+
+## Image gallery
+
+The `Gallery` component (`components/Gallery/index.tsx`) is a client component that uses `@headlessui/react`'s `Tab` group to build an accessible tabbed image viewer.
+
+```tsx
+"use client";
+const Gallery = ({ images }: GalleryProps) => (
+  <Tab.Group as="div" className="flex flex-col-reverse">
+    {/* Thumbnail strip — hidden on mobile */}
+    <div className="mx-auto mt-6 hidden w-full max-w-2xl sm:block lg:max-w-none">
+      <Tab.List className="grid grid-cols-4 gap-6">
+        {images.map((image) => (
+          <GalleryTab key={image.id} image={image} />
+        ))}
+      </Tab.List>
+    </div>
+    {/* Main image panel */}
+    <Tab.Panels className="aspect-square w-full">
+      {images.map((image) => (
+        <Tab.Panel key={image.id}>
+          <div className="aspect-square relative h-full w-full sm:rounded-lg overflow-hidden">
+            <NextImage fill src={image.url} alt="Image" className="object-cover object-center" />
+          </div>
+        </Tab.Panel>
+      ))}
+    </Tab.Panels>
+  </Tab.Group>
+);
+```
+
+`flex-col-reverse` visually places the thumbnail strip below the main image even though it comes first in the DOM, keeping keyboard navigation logical.
+
+`GalleryTab` (`components/Gallery/GalleryTab.tsx`) renders each thumbnail as a `Tab` element. The active tab is indicated with a `ring-black` ring; inactive tabs show a transparent ring.
+
+## Product info (`Info` component)
+
+`components/Info.tsx` is a client component that displays the product's metadata and wires up the add-to-cart action.
+
+```tsx
+"use client";
+const Info = ({ data }: InfoProps) => {
+  const cart = useCart();
+  const onAddToCart: MouseEventHandler<HTMLButtonElement> = (event) => {
+    event.stopPropagation();
+    cart.addItem(data);
+  };
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-900">{data.name}</h1>
+      <p className="text-2xl text-gray-900"><Currency value={data?.price} /></p>
+      <hr className="my-4" />
+      <div className="flex flex-col gap-y-6">
+        <div className="flex items-center gap-x-4">
+          <h3 className="font-semibold text-black">Size:</h3>
+          <div>{data?.size?.name}</div>
+        </div>
+        <div className="flex items-center gap-x-4">
+          <h3 className="font-semibold text-black">Color:</h3>
+          <div
+            className="h-6 w-6 rounded-full border border-gray-600"
+            style={{ background: data?.color?.value }}
+          />
+        </div>
+      </div>
+      <Button className="flex items-center gap-x-2" onClick={onAddToCart}>
+        Add To Cart <ShoppingCart />
+      </Button>
+    </div>
+  );
+};
+```
+
+The color swatch is rendered as an inline `div` whose `background` is set to `data.color.value` — the raw CSS colour value (e.g. `#3b82f6`) stored in the backend.
+
+## Related products
+
+Below a `<hr>` separator, a `ProductList` titled "You may Like" shows all products sharing the same `categoryId`:
+
+```tsx
+<ProductList title="You may Like" items={suggestedProducts} />
+```
+
+This includes the current product itself since no exclusion filter is applied, so the section always contains at least one item.
+
+## Full page source
+
+```tsx
+import getProduct from "@/actions/get-product";
+import getProducts from "@/actions/get-products";
+import Gallery from "@/components/Gallery";
+import Info from "@/components/Info";
+import ProductList from "@/components/ProductList";
+import Container from "@/components/ui/Container";
+import { ProductPageProps } from "@/types/types";
+
+const ProductPage = async ({ params }: ProductPageProps) => {
+  const product = await getProduct(params.productId);
+  const suggestedProducts = await getProducts({
+    categoryId: product?.category?.id,
+  });
+  return (
+    <div className="bg-white">
+      <Container>
+        <div className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8">
+            {/* Gallery */}
+            <Gallery images={product.images} />
+            <div className="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0">
+              {/* Info */}
+              <Info data={product} />
+            </div>
+          </div>
+          <hr className="my-10" />
+          <ProductList title="You may Like" items={suggestedProducts} />
+        </div>
+      </Container>
+    </div>
+  );
+};
+
+export default ProductPage;
+```
+
+<Tip>
+  Product cards on the homepage and category pages include a quick-view button that opens the product in a preview modal (`PreviewModal`) without navigating away. The modal renders the same `Gallery` and `Info` components as the full product page, powered by the `usePreviewModal` Zustand store.
+</Tip>

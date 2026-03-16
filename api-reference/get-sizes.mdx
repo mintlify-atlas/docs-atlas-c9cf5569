@@ -1,0 +1,69 @@
+---
+title: "getSizes"
+description: "Fetch all available product sizes for use in category page filters."
+---
+
+## Function signature
+
+```typescript
+const getSizes = async (): Promise<Size[]>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/sizes
+```
+
+This endpoint takes no parameters and returns all available sizes.
+
+## Response
+
+Returns `Promise<Size[]>` — an array of size objects.
+
+<ResponseField name="id" type="string" required>
+  Unique size identifier. Used as the `sizeId` query parameter in `getProducts`.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Human-readable size label (e.g. `"Medium"`, `"Large"`).
+</ResponseField>
+
+<ResponseField name="value" type="string" required>
+  Short size abbreviation (e.g. `"M"`, `"L"`, `"XL"`).
+</ResponseField>
+
+## Source
+
+```typescript actions/get-sizes.tsx
+import { Size } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/sizes`;
+
+const getSizes = async (): Promise<Size[]> => {
+  const res = await fetch(URL);
+  return res.json();
+};
+
+export default getSizes;
+```
+
+## Usage example
+
+### Category page — populating the size filter
+
+```tsx app/(routes)/category/[categoryId]/page.tsx
+import getSizes from "@/actions/get-sizes";
+
+const CategoryPage = async ({ params, searchParams }: CategoryProps) => {
+  const sizes = await getSizes();
+
+  return (
+    <div>
+      <Filter data={sizes} name="Sizes" valueKey="sizeId" />
+    </div>
+  );
+};
+
+export default CategoryPage;
+```

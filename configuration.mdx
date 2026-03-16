@@ -1,0 +1,90 @@
+---
+title: "Configuration"
+description: "Configure environment variables and backend API connection"
+---
+
+## Environment variables
+
+E-Dokan Store uses a single required environment variable to connect to the backend API. Create a `.env.local` file in the project root with the following content:
+
+```bash .env.local
+NEXT_PUBLIC_API_URL=https://your-api-url.com/api/your-store-id
+```
+
+<Warning>
+  `NEXT_PUBLIC_API_URL` must be set before starting the development server or building for production. If it is missing or incorrect, the storefront will fail to fetch products, categories, billboards, and all other store data.
+</Warning>
+
+### Variable reference
+
+| Variable | Required | Description | Example |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Yes | Base URL of the backend REST API for your store | `https://your-api-url.com/api/your-store-id` |
+
+<Note>
+  The `NEXT_PUBLIC_` prefix makes this variable available in the browser bundle as well as on the server. Do not store sensitive secrets with this prefix.
+</Note>
+
+## Backend API requirements
+
+The storefront expects the backend at `NEXT_PUBLIC_API_URL` to expose the following REST endpoints. These are called by the action files in the `actions/` directory:
+
+| Endpoint | Used by | Description |
+|---|---|---|
+| `GET /billboards/:id` | `get-billboard.ts` | Fetches a single billboard by ID for the homepage banner |
+| `GET /products` | `get-products.ts` | Returns a list of products; supports `isFeatured`, `categoryId`, `sizeId`, and `colorId` query params |
+| `GET /products/:id` | `get-product.ts` | Returns a single product by ID |
+| `GET /categories` | `get-categories.ts` | Returns all product categories |
+| `GET /categories/:id` | `get-category.ts` | Returns a single category by ID |
+| `GET /sizes` | `get-sizes.ts` | Returns all available sizes |
+| `GET /colors` | `get-colors.ts` | Returns all available colors |
+
+<Tip>
+  The homepage (`app/(routes)/page.tsx`) fetches billboard ID `75c73606-f10d-48eb-9d57-440b98c484f6` and all featured products on every request. Make sure your API has at least one billboard and one featured product to see a populated homepage.
+</Tip>
+
+## Next.js configuration
+
+The `next.config.js` file at the project root contains the following settings:
+
+```javascript next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+    images: {
+        domains: ["res.cloudinary.com"]
+    }
+}
+
+module.exports = nextConfig
+```
+
+### Image domains
+
+Next.js restricts which external domains are allowed to serve optimized images via the `<Image>` component. The project is pre-configured to allow images from **Cloudinary** (`res.cloudinary.com`), which is the expected image host for product and billboard images returned by the API.
+
+If your backend stores images on a different host, add its domain to the `images.domains` array:
+
+```javascript next.config.js
+const nextConfig = {
+    images: {
+        domains: ["res.cloudinary.com", "your-image-host.com"]
+    }
+}
+```
+
+<Warning>
+  Using an image domain not listed in `images.domains` will cause Next.js to throw an error when attempting to render that image. Always add new image hosts to this list before deploying.
+</Warning>
+
+## Font and metadata
+
+The root layout (`app/layout.tsx`) applies the **Urbanist** Google Font across the entire application and sets the default metadata:
+
+```typescript app/layout.tsx
+export const metadata: Metadata = {
+  title: "Edokan",
+  description: "Your next home for you need",
+};
+```
+
+To update the site title or description, edit the `metadata` export in `app/layout.tsx`.

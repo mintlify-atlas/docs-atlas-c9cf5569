@@ -1,0 +1,79 @@
+---
+title: "Architecture overview"
+description: How E-Dokan is structured as a Next.js 13 App Router application.
+---
+
+E-Dokan is a **frontend-only storefront** built with Next.js 13 App Router. It has no backend of its own — all product, category, and order data is fetched from an external REST API at runtime. The application is statically rendered where possible, with Zustand managing ephemeral client-side state (cart, modals).
+
+## Directory structure
+
+| Directory | Purpose |
+|---|---|
+| `app/` | Next.js 13 App Router pages and layouts |
+| `actions/` | Server-side async functions that call the external REST API |
+| `components/` | Reusable React components (UI primitives, product cards, navbar, etc.) |
+| `hooks/` | Zustand state management hooks (`useCart`, `usePreviewModal`) |
+| `providers/` | React context providers rendered once in the root layout |
+| `types/` | TypeScript interface definitions for all domain models |
+| `lib/` | Utility functions (currency formatting, etc.) |
+
+<Note>
+  The `app/(routes)/` directory uses an App Router **route group**. The parentheses mean `(routes)` does not become part of the URL path — it is purely an organizational folder. All pages inside it are served at the root level (e.g., `/`, `/cart`, `/product/[productId]`).
+</Note>
+
+## Server vs client components
+
+Next.js 13 App Router defaults every component to a **server component**. Client components must opt in with the `"use client"` directive. E-Dokan follows the recommended pattern: server components fetch data, client components handle interactivity.
+
+| File | Type | Reason |
+|---|---|---|
+| `app/layout.tsx` | Server | Root layout — no interactivity needed |
+| `app/(routes)/page.tsx` | Server | Fetches billboard and featured products at request time |
+| `app/(routes)/category/[categoryId]/page.tsx` | Server | Fetches category, products, sizes, and colors |
+| `app/(routes)/product/[productId]/page.tsx` | Server | Fetches single product and suggested products |
+| `app/(routes)/cart/page.tsx` | **Client** | Reads Zustand cart store, which requires browser APIs |
+| `providers/modal-provider.tsx` | **Client** | Mounts `PreviewModal`; uses `useState`/`useEffect` hydration guard |
+| `providers/toast-provider.tsx` | **Client** | Renders `react-hot-toast` `<Toaster />` |
+| `hooks/use-cart.ts` | **Client** | Zustand store with `localStorage` persistence |
+| `hooks/use-preview-modal.ts` | **Client** | Zustand store for ephemeral modal state |
+
+## Root layout
+
+The root layout (`app/layout.tsx`) wraps every page and registers the two global providers:
+
+```tsx app/layout.tsx
+import Footer from "@/components/Footer";
+import "./globals.css";
+import type { Metadata } from "next";
+import { Urbanist } from "next/font/google";
+import Navbar from "@/components/Navbar";
+import ModalProvider from "@/providers/modal-provider";
+import ToastProvider from "@/providers/toast-provider";
+
+const font = Urbanist({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Edokan",
+  description: "Your next home for you need",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className={font.className}>
+        <ModalProvider />
+        <ToastProvider />
+        <Navbar />
+        {children}
+        <Footer />
+      </body>
+    </html>
+  );
+}
+```
+
+`ModalProvider` and `ToastProvider` are both `"use client"` components. Placing them at the top of `<body>` ensures they are available to any child component that calls `usePreviewModal` or `toast()`.

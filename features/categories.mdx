@@ -1,0 +1,191 @@
+---
+title: "Category pages"
+description: "Browse and filter products by category, size, and color."
+---
+
+Category pages list all products belonging to a single category and let shoppers narrow results using size and color filters. Each category has its own billboard, inherited from the category record in the backend.
+
+## URL structure
+
+```
+/category/[categoryId]
+```
+
+The `categoryId` segment maps directly to the category's ID in the backend. Example:
+
+```
+/category/c4e6b3a2-1d9f-4e8b-b2a7-3f5d8e9c0a1b
+```
+
+## Data fetching
+
+The page is an `async` server component. Four parallel data requests are made on every page load:
+
+```tsx
+const products = await getProducts({
+  categoryId: params.categoryId,
+  colorId: searchParams.colorId,
+  sizeId: searchParams.sizeId,
+});
+const sizes = await getSizes();
+const colors = await getColors();
+const category = await getCategory(params.categoryId);
+```
+
+| Call | Purpose |
+|---|---|
+| `getProducts` | Fetches products filtered by category and any active size/color filters |
+| `getSizes` | Loads all available sizes to populate the Sizes filter |
+| `getColors` | Loads all available colors to populate the Colors filter |
+| `getCategory` | Fetches the category name and its associated `Billboard` data |
+
+<Note>
+  Filter state is stored entirely in URL query parameters (`sizeId` and `colorId`). There is no client-side filter state — selecting a filter navigates to a new URL, which triggers a fresh server-side data fetch with the updated parameters.
+</Note>
+
+## Filter system
+
+### `Filter` component (`components/Filter.tsx`)
+
+The desktop sidebar filter is a client component that reads and writes URL query params using `next/navigation`:
+
+```tsx
+"use client";
+const Filter = ({ data, name, valueKey }: FilterProps) => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const selectedValue = searchParams.get(valueKey);
+
+  const onClick = (id: string) => {
+    const current = queryString.parse(searchParams.toString());
+    const query = { ...current, [valueKey]: id };
+
+    // Clicking an already-selected filter deselects it
+    if (current[valueKey] === id) {
+      query[valueKey] = null;
+    }
+
+    const url = queryString.stringifyUrl(
+      { url: window.location.href, query },
+      { skipNull: true }
+    );
+    router.push(url);
+  };
+  // ...
+};
+```
+
+Each filter option renders as a `Button`. The active selection is highlighted with an inverted (`bg-black text-white`) style. Clicking the active filter again removes it from the URL.
+
+The component accepts a `valueKey` prop (`"sizeId"` or `"colorId"`) so the same `Filter` component handles both filter types.
+
+### `MobileFilter` component (`components/mobile-filter.tsx`)
+
+On mobile the filters are hidden inside a slide-in drawer powered by `@headlessui/react`'s `Dialog`. A "Filters" button with a `Plus` icon opens it; an `X` icon button closes it.
+
+```tsx
+"use client";
+const MobileFilter = ({ sizes, colors }: MobileFilterProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  // ...
+  return (
+    <>
+      <Button className="flex items-center gap-x-2 lg:hidden" onClick={onOpen}>
+        Filters <Plus size={20} />
+      </Button>
+      <Dialog open={isOpen} as="div" className="relative z-40 lg:hidden" onClose={onClose}>
+        {/* Full-screen drawer with Filter components inside */}
+        <Filter valueKey="sizeId" name="Sizes" data={sizes} />
+        <Filter valueKey="colorId" name="Colors" data={colors} />
+      </Dialog>
+    </>
+  );
+};
+```
+
+## Responsive layout
+
+The page uses a CSS grid with 5 columns on desktop:
+
+| Breakpoint | Sidebar | Product grid |
+|---|---|---|
+| Mobile (`< lg`) | Hidden; replaced by the `MobileFilter` drawer button | Full width, 1–3 columns |
+| Desktop (`>= lg`) | 1 column wide — static `Filter` components for Sizes and Colors | 4 columns wide (`lg:col-span-4`) |
+
+## Full page source
+
+```tsx
+import getCategory from "@/actions/get-category";
+import getColors from "@/actions/get-colors";
+import getProducts from "@/actions/get-products";
+import getSizes from "@/actions/get-sizes";
+import Billboard from "@/components/Billboard";
+import Container from "@/components/ui/Container";
+import { CategoryProps } from "@/types/types";
+import Filter from "./components/Filter";
+import NoResults from "@/components/ui/no-results";
+import ProductCard from "@/components/ui/product-card";
+import MobileFilter from "./components/mobile-filter";
+
+export const revalidate = 0;
+
+const CategoryPage = async ({ params, searchParams }: CategoryProps) => {
+  const products = await getProducts({
+    categoryId: params.categoryId,
+    colorId: searchParams.colorId,
+    sizeId: searchParams.sizeId,
+  });
+  const sizes = await getSizes();
+  const colors = await getColors();
+  const category = await getCategory(params.categoryId);
+
+  return (
+    <div className="bg-white">
+      <Container>
+        <Billboard data={category.billboard} />
+        <div className="px-4 sm:px-6 lg:px-8 pb-24">
+          <div className="lg:grid lg:grid-cols-5 lg:gap-x-8">
+            {/* Mobile Filters */}
+            <MobileFilter sizes={sizes} colors={colors} />
+            {/* Desktop Filter */}
+            <div className="hidden lg:block">
+              <Filter valueKey="sizeId" name="Sizes" data={sizes} />
+              <Filter valueKey="colorId" name="Colors" data={colors} />
+            </div>
+            <div className="mt-6 lg:col-span-4 lg:mt-0">
+              {products.length === 0 && <NoResults />}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {products.map((product) => (
+                  <ProductCard key={product.id} data={product} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Container>
+    </div>
+  );
+};
+
+export default CategoryPage;
+```
+
+## `searchParams` and filter state
+
+`CategoryProps` types the `searchParams` object that Next.js passes to the page:
+
+```typescript
+interface CategoryProps {
+  params: { categoryId: string };
+  searchParams: {
+    colorId: string;
+    sizeId: string;
+  };
+}
+```
+
+Because the filter values come from `searchParams`, they are available server-side and are forwarded directly to `getProducts`. This means:
+
+- Filtered URLs are fully shareable and bookmarkable.
+- Search engines can index filtered category pages.
+- No hydration or client-side state is needed to apply filters on initial load.

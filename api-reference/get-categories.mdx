@@ -1,0 +1,84 @@
+---
+title: "getCategories"
+description: "Fetch all product categories for navigation and filtering."
+---
+
+## Function signature
+
+```typescript
+const getCategories = async (): Promise<Category[]>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/categories
+```
+
+This endpoint takes no parameters and returns all available categories.
+
+## Response
+
+Returns `Promise<Category[]>` — an array of category objects.
+
+<ResponseField name="id" type="string" required>
+  Unique category identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Category display name shown in navigation.
+</ResponseField>
+
+<ResponseField name="billboard" type="Billboard" required>
+  The billboard associated with this category, used as the hero image on the category page.
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique billboard identifier.
+    </ResponseField>
+    <ResponseField name="label" type="string" required>
+      Billboard heading text.
+    </ResponseField>
+    <ResponseField name="imageUrl" type="string" required>
+      URL of the billboard background image.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Source
+
+```typescript actions/get-categories.tsx
+import { Category } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/categories`;
+
+const getCategories = async (): Promise<Category[]> => {
+  const res = await fetch(URL);
+  return res.json();
+};
+
+export default getCategories;
+```
+
+<Note>
+  The source file is named `get-catgeories.tsx` (with a typo) in the repository. Import from that path accordingly.
+</Note>
+
+## Usage example
+
+### Navbar — populating the main navigation links
+
+```tsx components/navbar.tsx
+import getCategories from "@/actions/get-catgeories";
+
+const Navbar = async () => {
+  const categories = await getCategories();
+
+  return (
+    <nav>
+      <MainNav data={categories} />
+    </nav>
+  );
+};
+
+export default Navbar;
+```

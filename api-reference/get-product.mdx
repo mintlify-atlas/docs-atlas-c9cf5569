@@ -1,0 +1,142 @@
+---
+title: "getProduct"
+description: "Fetch a single product by its ID."
+---
+
+## Function signature
+
+```typescript
+const getProduct = async (id: string): Promise<Product>
+```
+
+## HTTP request
+
+```bash
+GET ${NEXT_PUBLIC_API_URL}/products/:id
+```
+
+## Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the product to retrieve.
+</ParamField>
+
+## Response
+
+Returns `Promise<Product>` — a single product object.
+
+<ResponseField name="id" type="string" required>
+  Unique product identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the product.
+</ResponseField>
+
+<ResponseField name="price" type="string" required>
+  Product price as a string.
+</ResponseField>
+
+<ResponseField name="isFeatured" type="boolean" required>
+  Whether the product is featured on the storefront.
+</ResponseField>
+
+<ResponseField name="category" type="Category" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique category identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Category display name.
+    </ResponseField>
+    <ResponseField name="billboard" type="Billboard" required>
+      <Expandable title="properties">
+        <ResponseField name="id" type="string" required>
+          Unique billboard identifier.
+        </ResponseField>
+        <ResponseField name="label" type="string" required>
+          Billboard heading text.
+        </ResponseField>
+        <ResponseField name="imageUrl" type="string" required>
+          URL of the billboard background image.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="size" type="Size" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique size identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Human-readable size name (e.g. "Medium").
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      Size abbreviation (e.g. "M").
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="color" type="Color" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique color identifier.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Human-readable color name (e.g. "White").
+    </ResponseField>
+    <ResponseField name="value" type="string" required>
+      Hex color value (e.g. `#FFFFFF`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="images" type="Image[]" required>
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique image identifier.
+    </ResponseField>
+    <ResponseField name="url" type="string" required>
+      Public URL of the product image.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Source
+
+```typescript actions/get-product.tsx
+import { Product } from "@/types/types";
+
+const URL = `${process.env.NEXT_PUBLIC_API_URL}/products`;
+
+const getProduct = async (id: string): Promise<Product> => {
+  const res = await fetch(`${URL}/${id}`);
+  return res.json();
+};
+
+export default getProduct;
+```
+
+## Usage example
+
+```tsx app/(routes)/product/[productId]/page.tsx
+import getProduct from "@/actions/get-product";
+
+interface ProductPageProps {
+  params: { productId: string };
+}
+
+const ProductPage = async ({ params }: ProductPageProps) => {
+  const product = await getProduct(params.productId);
+
+  return (
+    <div>
+      <Info data={product} />
+    </div>
+  );
+};
+
+export default ProductPage;
+```

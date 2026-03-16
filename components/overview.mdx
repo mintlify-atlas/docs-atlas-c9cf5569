@@ -1,0 +1,94 @@
+---
+title: "Components overview"
+description: "Overview of all React components in the E-Dokan storefront, organized by feature components and UI primitives."
+---
+
+The E-Dokan storefront is composed of two layers of components:
+
+- **Feature components** — higher-level components that implement specific product or page concerns (navigation, product listings, galleries, etc.).
+- **UI primitives** — low-level, reusable building blocks consumed by feature components and pages.
+
+All components are written in TypeScript and styled with Tailwind CSS. Shared prop interfaces live in `types/types.ts`.
+
+## Feature components
+
+<CardGroup cols={2}>
+  <Card title="Billboard" href="/components/layout#billboard">
+    Full-width hero banner that renders a background image with a centred text label. Used at the top of the home page and category pages.
+  </Card>
+  <Card title="Footer" href="/components/layout#footer">
+    Simple site-wide footer displaying a dynamic copyright year.
+  </Card>
+  <Card title="Gallery" href="/components/layout#gallery">
+    Headless UI tabbed image gallery with a thumbnail strip and a large main image panel. Used on the product detail page and inside PreviewModal.
+  </Card>
+  <Card title="Info" href="/components/layout#info">
+    Product detail panel showing name, price, size, color swatch, and an Add to Cart button. Client component — reads and writes the cart store.
+  </Card>
+  <Card title="MainNav" href="/components/layout#mainnav">
+    Horizontal desktop navigation that maps fetched categories to route links, highlighting the active route.
+  </Card>
+  <Card title="Navbar" href="/components/layout#navbar">
+    Async server component that fetches all categories and composes the logo, MainNav, and NavbarActions into the top app bar.
+  </Card>
+  <Card title="NavbarActions" href="/components/layout#navbaractions">
+    Client component rendering a cart icon button with a live item-count badge. Navigates to the cart page on click.
+  </Card>
+  <Card title="PreviewModal" href="/components/layout#previewmodal">
+    Quick-view modal that combines Gallery and Info inside a Modal overlay. Driven by the `usePreviewModal` Zustand store.
+  </Card>
+  <Card title="ProductList" href="/components/layout#productlist">
+    Section heading plus a responsive 1–4 column grid of ProductCard tiles. Shows a NoResults fallback when the list is empty.
+  </Card>
+</CardGroup>
+
+## UI primitives
+
+<CardGroup cols={2}>
+  <Card title="Button" href="/components/ui-components#button">
+    Rounded full-width-auto button forwarding all native HTML button attributes. Applies consistent black pill styling with a hover opacity effect.
+  </Card>
+  <Card title="Container" href="/components/ui-components#container">
+    Max-width (`max-w-7xl`) centred wrapper `div` used to constrain page content to a consistent reading width.
+  </Card>
+  <Card title="Currency" href="/components/ui-components#currency">
+    Client component that formats a numeric or string price value as a USD currency string using `Intl.NumberFormat`.
+  </Card>
+  <Card title="IconButton" href="/components/ui-components#iconbutton">
+    Small circular white button designed to wrap a single Lucide icon. Scales up on hover.
+  </Card>
+  <Card title="Modal" href="/components/ui-components#modal">
+    Headless UI `Dialog` wrapper with a dark backdrop, animated enter/leave transitions, and an `IconButton` close control.
+  </Card>
+  <Card title="NoResults" href="/components/ui-components#noresults">
+    Centred "No Result Found!" empty-state message rendered when a product list has zero items.
+  </Card>
+  <Card title="ProductCard" href="/components/ui-components#productcard">
+    Clickable product tile showing the first product image, name, category, price, and hover-revealed Expand / Add-to-Cart icon buttons.
+  </Card>
+</CardGroup>
+
+## The `cn()` utility
+
+All components that merge Tailwind classes use the `cn()` helper from `lib/utils.ts`:
+
+```typescript
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+`clsx` conditionally joins class name strings and arrays; `tailwind-merge` then deduplicates conflicting Tailwind utilities (e.g. two `px-*` values) so the last one wins. Pass any combination of strings, arrays, or objects and receive a single, conflict-free class string.
+
+```tsx
+import { cn } from "@/lib/utils";
+
+// Conditionally apply an active style
+<Link className={cn("text-sm font-medium", isActive && "text-black")} />
+
+// Override a default class from the outside
+<Button className={cn("px-2 py-1")} /> // px-2 wins over the default px-5
+```
