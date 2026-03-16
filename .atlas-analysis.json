@@ -1,0 +1,92 @@
+{
+  "projectType": "saas",
+  "projectName": "E-Dokan Store",
+  "projectDescription": "A Next.js 13 e-commerce storefront with product browsing, category filtering, product details, and a persistent shopping cart powered by an external REST API.",
+  "theme": "almond",
+  "primaryColor": "#4F46E5",
+  "lightColor": "#EEF2FF",
+  "darkColor": "#3730A3",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "configuration"]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/homepage",
+              "features/categories",
+              "features/products",
+              "features/cart"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/data-fetching",
+              "architecture/state-management"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/overview",
+              "components/ui-components",
+              "components/layout"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Actions",
+            "pages": [
+              "api-reference/get-products",
+              "api-reference/get-product",
+              "api-reference/get-categories",
+              "api-reference/get-category",
+              "api-reference/get-billboard",
+              "api-reference/get-sizes",
+              "api-reference/get-colors"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "pages": [
+              "api-reference/use-cart",
+              "api-reference/use-preview-modal"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Product browsing with featured product highlights on the homepage",
+    "Category-based product filtering with size and color filters",
+    "Product detail pages with image gallery and related product suggestions",
+    "Persistent shopping cart using Zustand with localStorage",
+    "Quick-view product preview modal",
+    "Responsive design with mobile filter support",
+    "Real-time toast notifications for cart actions",
+    "Integration with external e-commerce API via NEXT_PUBLIC_API_URL"
+  ],
+  "publicApiSurface": [
+    "getProducts({ categoryId?, colorId?, sizeId?, isFeatured? })",
+    "getProduct(id: string)",
+    "getCategories()",
+    "getCategory(id: string)",
+    "getBillboard(id: string)",
+    "getSizes()",
+    "getColors()",
+    "useCart() — addItem, removeItem, removeAll",
+    "usePreviewModal() — isOpen, onOpen, onClose"
+  ]
+}
